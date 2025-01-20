@@ -1,0 +1,91 @@
+v<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Leaflet Map with GeoJSON</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=UD+Gothic&display=swap" rel="stylesheet">
+  <style>
+    body { margin: 0; display: flex; height: 100vh; background-color: #A8D5BA; }
+    #map { width: 75%; height: 100%; }
+    #legend { width: 25%; height: 100%; overflow-y: auto; background-color: white; padding: 10px; font-family: 'UD Gothic', sans-serif; }
+    .legend-item { cursor: pointer; margin-bottom: 10px; color: #333333; font-size: 14px; }
+    .legend-item:hover { background-color: #f0f0f0; }
+    .legend-item span { width: 20px; height: 20px; display: inline-block; margin-right: 10px; }
+  </style>
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+</head>
+<body>
+  <div id="map"></div>
+  <div id="legend"></div>
+
+  <script>
+    const geojsonUrls = {
+      geojsonUrl1: 'https://raw.githubusercontent.com/kogy8/github.io/refs/heads/main/%E9%B3%A5%E7%8D%A3%E4%BF%9D%E8%AD%B7%E5%8C%BA.geojson',
+      geojsonUrl2: 'https://raw.githubusercontent.com/kogy8/github.io/refs/heads/main/%E5%9B%BD%E6%9C%89%E6%9E%97.geojson',
+      geojsonUrl3: 'https://raw.githubusercontent.com/kogy8/github.io/refs/heads/main/%E7%89%B9%E5%88%A5%E4%BF%9D%E8%AD%B7%E5%9C%B0%E5%8C%BA.geojson',
+      geojsonUrl4: 'https://raw.githubusercontent.com/kogy8/github.io/refs/heads/main/%E8%87%AA%E7%84%B6%E5%85%AC%E5%9C%92%26%E7%89%B9%E5%88%A5%E5%9C%B0%E5%9F%9F.geojson'
+    };
+
+    const map = L.map('map').setView([39.164194, 140.496083], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    function createLegend(data, geojsonLayer, color, enableLegend) {
+      const legendContainer = document.getElementById('legend');
+      const legendItems = {};
+
+      if (enableLegend) {
+        data.features.forEach(feature => {
+          const name = feature.properties.name || '無名の地域';
+          legendItems[name] = color;
+        });
+
+        Object.keys(legendItems).sort().forEach(name => {
+          const div = document.createElement('div');
+          div.className = 'legend-item';
+          div.innerHTML = `<span style="background-color: ${legendItems[name]};"></span>${name}`;
+          div.addEventListener('click', () => {
+            const layer = geojsonLayer.getLayers().find(layer => layer.feature.properties.name === name);
+            if (layer) { map.fitBounds(layer.getBounds()); layer.openPopup(); }
+          });
+          legendContainer.appendChild(div);
+        });
+      }
+    }
+
+    function processGeoJSON(geojsonUrl, geojsonLayerKey, enablePopup, enableLegend, fillColor, borderColor, isDotted) {
+      fetch(geojsonUrl)
+        .then(response => response.json())
+        .then(data => {
+          const geojsonLayer = L.geoJSON(data, {
+            style: (feature) => {
+              if (geojsonLayerKey === 'geojsonLayer2') {
+                return { color: borderColor, fillColor: '', fillOpacity: 0, weight: 2, dashArray: '5,5' };
+              } else if (geojsonLayerKey === 'geojsonLayer4') {
+                return { color: borderColor, fillColor: '', fillOpacity: 0, weight: 2, dashArray: '5,5' };
+              } else {
+                return { color: borderColor, fillColor: fillColor, fillOpacity: 0.5, weight: 2 };
+              }
+            },
+            onEachFeature: (feature, layer) => {
+              const name = feature.properties?.name || "無名の地域";
+              if (enablePopup) layer.bindPopup(`<b>地名:</b> ${name}`);
+            }
+          }).addTo(map);
+
+          map.fitBounds(geojsonLayer.getBounds());
+          createLegend(data, geojsonLayer, borderColor, enableLegend);
+        })
+        .catch(error => console.error('GeoJSONの読み込みに失敗しました:', error));
+    }
+
+    processGeoJSON(geojsonUrls.geojsonUrl1, 'geojsonLayer1', true, true, '#FF6347', '#FF6347', false);
+    processGeoJSON(geojsonUrls.geojsonUrl2, 'geojsonLayer2', true, true, '', '#FFD700', true);
+    processGeoJSON(geojsonUrls.geojsonUrl3, 'geojsonLayer3', true, true, '#32CD32', '#32CD32', false);
+    processGeoJSON(geojsonUrls.geojsonUrl4, 'geojsonLayer4', true, true, '', '#4682B4', true);
+  </script>
+</body>
+</html>
